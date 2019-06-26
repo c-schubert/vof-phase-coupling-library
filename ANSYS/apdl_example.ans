@@ -1,0 +1,346 @@
+/BATCH
+! Example File for the structure of APDL file for use with the 
+! VoF Multiphase coupling libary
+
+! License (MIT):
+
+! Copyright (c) 2016-2019 Christian Schubert
+
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+FINISH
+/CLEAR
+
+/GRAPHICS, FULL
+
+/COM ----------------------------------------------------------------------
+/COM    GENERAL PARAMETER DEFINTIONS
+/COM ----------------------------------------------------------------------
+
+!SET YOUR PARAMETERS HERE:
+
+!....
+
+EL_RES_STEEL = 1E-6 ! ADAPT 
+EL_RES_SLAG = 0.5E-2 ! ADAPT
+
+
+
+! COUPLING SETTINGS:
+MAX_COUPLING_LOOPS=10000000 ! MAX COUPLING ITERATIONS 
+MAX_SYNCS_PER_COUPLING_ITERATION=1200000
+SYNC_WAIT_TIME=0.5
+
+*DIM,XC_PATH,STRING,80
+XC_PATH(1) = 'Z:\EXAMPLE\XC\\'
+
+
+
+*DIM,SYNC_FILE_PATH,STRING,80
+SYNC_FILE_PATH(1) = STRCAT(XC_PATH(1),'SYNC')
+
+/COM ----------------------------------------------------------------------
+/COM	ELEMENTTYPES
+/COM ----------------------------------------------------------------------
+
+/PREP7 
+
+!SET ELEMENTTYPES
+
+
+/COM ----------------------------------------------------------------------
+/COM    ELEMENT MATERIAL PROPERTIES
+/COM ----------------------------------------------------------------------
+
+
+!SET MATERIAL PROPERTIES:
+
+MP,MURX,1,1 
+MP,MURX,2,1
+
+! LINEAR INTERPOLATION BETWEEN ELECTRICAL RESITIVITY 
+! TWO MATERIALS ONLY FOR DEBUGGING PURPOSES
+
+MP,RSVX,1,EL_RES_STEEL,EL_RES_SLAG   !ADOPT IF NECESSARY
+MPTEMP,1,0,1                         !ADOPT IF NECESSARY
+MP,RSVX,2,EL_RES_STEEL,EL_RES_SLAG   !ADOPT IF NECESSARY
+MPTEMP,1,0,1                         !ADOPT IF NECESSARY
+
+/COM ----------------------------------------------------------------------
+/COM    GEOMETRY + MESH
+/COM ----------------------------------------------------------------------
+
+!SET/LOAD GEOM AND MESH AND INIT MATERIALS
+
+
+/COM ----------------------------------------------------------------------
+/COM    BOUNDARY CONDITIONS + LOADS
+/COM ----------------------------------------------------------------------
+
+!SET ALL NECESSARY BOUNDARY CONDITIONS / LOADS
+
+/COM --------------------------------------------------------------------
+/COM   DIMENSIONING OF NECESSARY VARIABLES/ARRAYS/MATRICES
+/COM   (ADAPT EXCHANGE REGION HERE!!!)
+/COM --------------------------------------------------------------------
+
+ALLSEL
+*DIM,SYNC,ARRAY,1,1,1,,
+*GET,MAX_ELEMENT,ELEM,0,NUM,MAX
+*GET,MIN_ELEMENT,ELEM,0,NUM,MIN
+*GET,ELEMENTCOUNT,ELEM,,COUNT
+*GET,NODECOUNT,NODE,,COUNT
+*DIM,ELEM_MAT,ARRAY,ELEMENTCOUNT,10,1
+
+*VGET,ELEM_MAT(1,2),ELEM,,ELIST,,,,2    !REMEMBER ELEMENT NUMBER (ELIST ONLY ENTITY NOT LOOPING OVER ENTNUM...)
+
+! ADAPT EXCHANGE REGION!!!!
+ALLSEL !ADAPT: ONLY SELECT THE VOLUME AREA WHICH SHOULD BE EXCHANGED WITH FLUENT!
+
+
+*DO,I,1,ELEMENTCOUNT,1
+ELEM_NO = ELEM_MAT(I,2)
+*GET,ELEM_MAT(I,1),ELEM,ELEM_NO,ESEL,,,    !REMEMBER SELECTION STATE FOR PRINT_MAT
+*ENDDO
+
+*GET,NO_PRINT_ELEMENTS,ELEM,,COUNT
+*DIM,READ_VOLUME_FRAC,ARRAY,NO_PRINT_ELEMENTS,1,1,,
+*DIM,PRINT_MAT,ARRAY,NO_PRINT_ELEMENTS,8,1
+
+II=0
+*DO,I,1,ELEMENTCOUNT,1
+    *IF,ELEM_MAT(I,1),EQ,1,THEN !IF SELECTED VOLUME AREA FOR EXCHANGE
+        II=II+1
+        PRINT_MAT(II,1)=ELEM_MAT(I,2) !ELEMENT NUMBER
+    *ENDIF
+*ENDDO
+
+ALLSEL
+
+/COM --------------------------------------------------------------------
+/COM   START COUPLING LOOP
+/COM --------------------------------------------------------------------
+
+*DO,I_CPL,1,MAX_COUPLING_LOOPS !BEGINN COUPLING LOOP
+
+/PREP7
+ALLSEL
+
+/COM --------------------------------------------------------------------
+/COM   UPDATE SYNC STATE
+/COM --------------------------------------------------------------------
+STATE = 4
+
+*DO,I,1,MAX_SYNCS_PER_COUPLING_ITERATION !BEGINN SYNC LOOP
+
+*VREAD,SYNC(1,1),%SYNC_FILE_PATH(1)%,TXT
+(F2.0)
+
+*IF,SYNC(1,1),EQ,0,THEN
+    STATE = 0 ! INIT -> WRITE OUT ELEMENT COORDS
+    *EXIT
+*ELSE
+    STATE = 1 ! FLUENT RUNNING
+
+    *IF,SYNC(1,1),EQ,2,THEN
+        STATE = 2 ! RUN ANSYS
+        *EXIT
+    *ENDIF
+
+    *IF,SYNC(1,1),EQ,3,THEN
+        STATE = 3 !ABORT
+        *EXIT
+    *ENDIF
+
+    /WAIT,SYNC_WAIT_TIME
+    *MSG, INFO
+    Waiting for Fluent iteration to finish...
+*ENDIF
+
+*IF,I,EQ,MAX_SYNCS_PER_COUPLING_ITERATION,THEN
+STATE = 4
+*ENDIF
+
+*ENDDO !END SYNC LOOP
+
+
+*IF,STATE,EQ,3,THEN
+    *MSG, INFO
+    Aborting ....
+    *EXIT
+*ENDIF
+
+*IF,STATE,EQ,4,THEN
+    *MSG, INFO
+    Error no sync possible exiting Ansys!
+    *EXIT
+*ENDIF
+
+/COM --------------------------------------------------------------------
+/COM   SET VOLUME FRACTION BASED MATERIAL PROPERTIES 
+/COM --------------------------------------------------------------------
+
+
+*IF,STATE,EQ,2,THEN !IF EXCHANGE VOF
+
+    *VREAD,READ_VOLUME_FRAC(1,1),STRCAT(XC_PATH(1),'FLUENT_TO_ANSYS_VOF_OUT'),'DAT'
+    (F6.4)
+
+    *DO,II,1,NO_PRINT_ELEMENTS !BEGINN EXCHANGED VOLUME FRACTION PER ELEMENT LOOP
+
+        *IF,READ_VOLUME_FRAC(II,1),GT,0.5,THEN
+            MAT,2 ! ADAPT IF NECESSARY
+        *ELSE
+            MAT,1 ! ADAPT IF NECESSARY
+        *ENDIF
+
+        ELEMENTIDX = PRINT_MAT(II,1)
+
+        EMODIF,ELEMENTIDX
+
+        BFE,ELEMENTIDX,TEMP,,READ_VOLUME_FRAC(II,1) ! ADAPT IF NECESSARY
+    *ENDDO !END EXCHANGED VOLUME FRACTION PER ELEMENT LOOP
+
+*ENDIF !END IF EXCHANGE VOF
+
+
+
+/COM --------------------------------------------------------------------
+/COM   SOLUTION
+/COM --------------------------------------------------------------------
+
+!SOLUTION SETTINGS ADAPT WHERE NECESSARY:
+
+/SOL
+ALLSEL
+
+SOLCONTROL,OFF
+
+ANTYPE,HARMIC,NEW 
+HARFRQ,FREQUENCY_IN_HZ
+OUTRES,ALL,LAST 
+
+EQSLV,SPARSE,1.0E-6,,,DELE
+BCSOPTION,,INCORE,,,,PERFORMANCE
+
+SOLVE
+
+/COM --------------------------------------------------------------------
+/COM   POST PROCESSING
+/COM --------------------------------------------------------------------
+
+/POST1
+
+!INSERT CUSTOM POSTPROCESSING HERE
+
+/COM --------------------------------------------------------------------
+/COM   GET ETABLES
+/COM --------------------------------------------------------------------
+
+ALLSEL
+SET,LAST,LAST ! ETABLE FIX ANSYS >= 19.2
+
+ETABLE,POS_AX,CENT,X
+ETABLE,POS_AY,CENT,Y
+ETABLE,POS_AZ,CENT,Z
+ETABLE,F_FX,FMAG,X
+ETABLE,F_FY,FMAG,Y
+ETABLE,F_FZ,FMAG,Z
+ETABLE,C_VOL,VOLU
+NSLE
+POWERH
+ALLSEL
+ETABLE,JOULE
+SMULT, JOULE, PLOSSD,, 1
+
+
+/COM --------------------------------------------------------------------
+/COM   ETABLE TO MATRIX
+/COM --------------------------------------------------------------------
+ALLSEL
+CSYS,0
+
+*DO,I,1,ELEMENTCOUNT,1
+    ELEM_NO = ELEM_MAT(I,2)
+    *GET,ELEM_MAT(I,3),ELEM,ELEM_NO,ETAB,POS_AX,,
+    *GET,ELEM_MAT(I,4),ELEM,ELEM_NO,ETAB,POS_AY,,
+    *GET,ELEM_MAT(I,5),ELEM,ELEM_NO,ETAB,POS_AZ,,
+    *GET,ELEM_MAT(I,6),ELEM,ELEM_NO,ETAB,F_FX,,
+    *GET,ELEM_MAT(I,7),ELEM,ELEM_NO,ETAB,F_FY,,
+    *GET,ELEM_MAT(I,8),ELEM,ELEM_NO,ETAB,F_FZ,,
+    *GET,ELEM_MAT(I,9),ELEM,ELEM_NO,ETAB,JOULE,,
+    *GET,ELEM_MAT(I,10),ELEM,ELEM_NO,ETAB,C_VOL,
+*ENDDO
+
+
+/COM --------------------------------------------------------------------
+/COM   GENERATE PRINT_MAT MATRIX
+/COM --------------------------------------------------------------------
+
+II=0
+*DO,I,1,ELEMENTCOUNT,1
+    *IF,ELEM_MAT(I,1),EQ,1,THEN !IF SELECTED VOLUME AREA FOR EXCHANGE
+        II=II+1
+        PRINT_MAT(II,1)=ELEM_MAT(I,2) !ELEMENT NUMBER
+        PRINT_MAT(II,2)=ELEM_MAT(I,3) !POS_AX
+        PRINT_MAT(II,3)=ELEM_MAT(I,4) !POS_AY
+        PRINT_MAT(II,4)=ELEM_MAT(I,5) !POS_AZ
+        PRINT_MAT(II,5)=ELEM_MAT(I,6)/ELEM_MAT(I,10) !FX
+        PRINT_MAT(II,6)=ELEM_MAT(I,7)/ELEM_MAT(I,10) !FY
+        PRINT_MAT(II,7)=ELEM_MAT(I,8)/ELEM_MAT(I,10) !FZ
+        PRINT_MAT(II,8)=ELEM_MAT(I,9) !JOULE HEAT
+    *ENDIF !END IF SELECTED VOLUME AREA FOR EXCHANGE
+*ENDDO
+
+
+/COM --------------------------------------------------------------------
+/COM   COUPLING OUTPUT (LORENTZ FORCE AND JOULE HEAT)
+/COM --------------------------------------------------------------------
+
+*IF,STATE,EQ,2,THEN !IF EXCHANGE LF AND JH
+
+*CFOPEN,STRCAT(XC_PATH(1),'ANSYS_TO_FLUENT_OUT'),'DAT'
+*VWRITE,PRINT_MAT(1,8),PRINT_MAT(1,5),PRINT_MAT(1,6),PRINT_MAT(1,7)
+((E15.7),(E15.7),(E15.7),(E15.7))
+*CFCLOSE
+
+*ENDIF !END IF EXCHANGE LF AND JH
+
+
+/COM --------------------------------------------------------------------
+/COM   ELEMENT COORDINDATES OUTPUT (+ OTHER FOR POSTPORCESSING)
+/COM --------------------------------------------------------------------
+
+
+
+*IF,STATE,EQ,0,THEN !IF INIT COUPLING
+
+*CFOPEN,STRCAT(XC_PATH(1),'ANSYS_TO_FLUENT_ALLOUT'),'DAT'
+!*VWRITE,'CENTX','CENTY','CENTZ','FMAGX','FMAGY','FMAGZ','JOULE','ELEM'
+!(A,A,A,A,A,A,)
+*VWRITE,PRINT_MAT(1,2),PRINT_MAT(1,3),PRINT_MAT(1,4),PRINT_MAT(1,5),PRINT_MAT(1,6),PRINT_MAT(1,7),PRINT_MAT(1,8),PRINT_MAT(1,1)
+((E15.7),(E15.7),(E15.7),(E15.7),(E15.7),(E15.7),(E15.7),(F8.1))
+*CFCLOSE
+
+*ENDIF !END IF INIT COUPLING
+
+/COM --------------------------------------------------------------------
+/COM   UPDATE SYNC (ANSYS READY!)
+/COM --------------------------------------------------------------------
+
+*CFOPEN,STRCAT(XC_PATH(1),'SYNC'),'TXT'
+*VWRITE,1
+(F2.0)
+*CFCLOSE
+
+LSCLEAR, ALL
+
+*ENDDO !END COUPLING LOOP
+
+
+
+FINISH
+/EOF
