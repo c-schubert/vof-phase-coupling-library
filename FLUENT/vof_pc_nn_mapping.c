@@ -39,9 +39,9 @@ int safeDistributeMappedArrayToNodesInCellZone(
 
     #if !RP_HOST
     Thread *t;
-    Domain *domain = Get_Domain(1); // mixture domain
+    Domain *domain = Get_Domain(1);
     t = Lookup_Thread(domain, cell_zone_id);
-    #endif
+    #endif /* !RP_HOST */
 
     #if RP_HOST
     int ii;
@@ -109,7 +109,8 @@ int safeDistributeMappedArrayToNodesInCellZone(
                 else
                 {
                     Message("Error safeDistributeMappedArrayToNodes(): Index "
-                            "out of bounds 2!\n");
+                            "out of bounds 2!\n"
+                            "size_mapped_arr: %i\ni_start: %i\ncells_in_node_n: %i\n",size_mapped_arr, i_start,  cells_in_node_n);
                     state = _STATE_ERROR;
                 }
             }
@@ -169,7 +170,7 @@ int safeDistributeMappedArrayToNodesInCellZone(
                 "In mapping from host!\n");
     }
     
-    #endif
+    #endif /* RP_HOST */
 
 
     #if !RP_HOST
@@ -240,7 +241,6 @@ int safeDistributeMappedArrayToNodesInCellZone(
             }
             else
             {
-                
                 if(pe != myid)
                 {
                     PRF_CSEND_INT(pe, &state, 1, myid);
@@ -406,8 +406,10 @@ void nearestNeighborMatching(
                                 int size_arr_1,
                                 real (*coord_arr_2)[ND_ND],
                                 int size_arr_2, 
-                                int **mapping_arr1_to_arr2, 
-                                int **mapping_arr2_to_arr1
+                                int **mappings_arr1_to_arr2, 
+                                real **weights_arr1_to_arr2, 
+                                int **mappings_arr2_to_arr1,
+                                real **weights_arr2_to_arr1
                             )
 {
     int i = 0;
@@ -418,17 +420,22 @@ void nearestNeighborMatching(
     real min_arr1_to_arr2 = 0;
     real *min_arr2_to_arr1= NULL;
 
-    *mapping_arr1_to_arr2 = NULL;
-    *mapping_arr2_to_arr1 = NULL;
+    *mappings_arr1_to_arr2 = NULL;
+    *mappings_arr2_to_arr1 = NULL;
 
     min_arr2_to_arr1 = (real *) calloc(size_arr_2, sizeof(real));
 
-    *mapping_arr1_to_arr2 = (int *) calloc(size_arr_1, sizeof(int));
-    *mapping_arr2_to_arr1 = (int *) calloc(size_arr_2, sizeof(int));
+    *mappings_arr1_to_arr2 = (int *) calloc(size_arr_1, sizeof(int));
+    *mappings_arr2_to_arr1 = (int *) calloc(size_arr_2, sizeof(int));
+
+    *weights_arr1_to_arr2 = (real *) calloc(size_arr_1, sizeof(real));
+    *weights_arr2_to_arr1 = (real *) calloc(size_arr_2, sizeof(real));
     
     if( min_arr2_to_arr1 == NULL || 
-        *mapping_arr1_to_arr2 == NULL ||
-        *mapping_arr2_to_arr1 == NULL
+        *mappings_arr1_to_arr2 == NULL ||
+        *mappings_arr2_to_arr1 == NULL ||
+        *weights_arr1_to_arr2 == NULL ||
+        *weights_arr2_to_arr1 == NULL
      )
     {
         Message("Error at allocation in nearestNeighborMatching"
@@ -443,23 +450,26 @@ void nearestNeighborMatching(
             NV_VV(x, =, coord_arr_1[0], - , coord_arr_2[j]);
             min_arr2_to_arr1[j] = NV_MAG2(x);
 
-            (*mapping_arr2_to_arr1)[j] = 0;
+          /*   (*mappings_arr2_to_arr1)[j] = 0; */
+            (*weights_arr2_to_arr1)[j] = 1.0;
         }
 
 
         for (i = 0; i < size_arr_1; ++i)
         {
+            (*weights_arr1_to_arr2)[i] = 1.0;
+            
             /* j = 0 */
             j = 0;
             {
                 NV_VV(x, =, coord_arr_1[i], - , coord_arr_2[j]);
                 squared_dist =  NV_MAG2(x);
                 min_arr1_to_arr2 = squared_dist;
-                (*mapping_arr1_to_arr2)[i] = j;
+                (*mappings_arr1_to_arr2)[i] = j;
 
                 if (squared_dist < min_arr2_to_arr1[j])
                 {
-                    (*mapping_arr2_to_arr1)[j] = i;
+                    (*mappings_arr2_to_arr1)[j] = i;
                     min_arr2_to_arr1[j] = squared_dist;
                 }
             }
@@ -471,13 +481,13 @@ void nearestNeighborMatching(
 
                 if(squared_dist < min_arr1_to_arr2)
                 {
-                    (*mapping_arr1_to_arr2)[i] = j;
+                    (*mappings_arr1_to_arr2)[i] = j;
                     min_arr1_to_arr2 = squared_dist;
                 }
 
                 if (squared_dist < min_arr2_to_arr1[j])
                 {
-                    (*mapping_arr2_to_arr1)[j] = i;
+                    (*mappings_arr2_to_arr1)[j] = i;
                     min_arr2_to_arr1[j] = squared_dist;
                 }
             }
@@ -517,9 +527,9 @@ int getAnsysElementCountFromFileLength(char filename[])
 
 
 int debugWriteMappings(
-                            int *mapping_arr1_to_arr2, 
+                            int *mappings_arr1_to_arr2, 
                             int size_arr_1,
-                            int *mapping_arr2_to_arr1,
+                            int *mappings_arr2_to_arr1,
                             int size_arr_2, 
                             char filename_arr1_to_arr2_mapping[],
                             char filename_arr2_to_arr1_mapping[]
@@ -530,7 +540,7 @@ int debugWriteMappings(
 
     state = writeIntegerArrToFile(
                                     filename_arr1_to_arr2_mapping,
-                                    mapping_arr1_to_arr2,
+                                    mappings_arr1_to_arr2,
                                     size_arr_1
                                  );
 
@@ -541,7 +551,7 @@ int debugWriteMappings(
     }
     state  = writeIntegerArrToFile( 
                                     filename_arr2_to_arr1_mapping,
-                                    mapping_arr2_to_arr1,
+                                    mappings_arr2_to_arr1,
                                     size_arr_2
                                   );
     if(state != _STATE_OK)
@@ -607,6 +617,8 @@ int writePropertyArrayToFileMapped(
             Message("Error (writePropertyArrayToFileMapped()): Error in "
                     "reorderArr()!\n");
         }
+
+        free(mapped_property_arr);
     }
     
     return state;

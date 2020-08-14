@@ -87,8 +87,14 @@ To initialise the coupling you have to setup your single cases and make the nece
   * further code refurbishment and enhancement of code modularity
   * improvement of current limitations
   * make NN faster (i.e. kdtree search)
-  * make use of better (more accurate) coupling methods than NN
+  * make use of better (more accurate - i.e. supermesh) coupling methods than NN
   * make coupling function for variating grids -> fast mapping necessary
 
 
+## Disclaimer
 
+*The project in which the work on this solver was fundet is over by now, so I wont be able to make many enhancements in the near future myself. We hope there will be future projects to make more enhancements to these solver collection. Nevertheless if there may be any pull request I will try to have a look ...*
+
+## Acknowledgment
+The authors gratefully acknowledge the support of the
+German Research Foundation (Deutsche Forschungsgemeinschaft – DFG) during the DFG project PF 394/24-1 (2016-2019).

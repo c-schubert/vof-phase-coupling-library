@@ -1,7 +1,9 @@
 /* 
+vof_pc_main.h
 Main header file for the VoF phase coupling library for coupling between 
 ANSYS Fluent and ANSYS Mechanical APDL.
 
+You have to modifiy vof_pc_case.h and vof_pc_nn_coupling.c to fit your case!
 
 License (MIT):
 
@@ -18,7 +20,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #ifndef VOF_PC_H
 
 #define VOF_PC_H
-
 #include "udf.h"
 #include "math.h"
 #include "stdlib.h"
@@ -29,23 +30,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 /* Enable more I/O messages for debbuging purposes */
 #define VOF_PC_DEBUG 0
 
-#define FLUID_ID 11 /* Adopt!*/
+#define VOF_MAX_REL_CHANGE 0.25 /* Max value that any VOF of a Cell in Fluent can cange until recoupling with ANSYS if loose coupling is choosen */
 
-#define MAX_COUPLING_TRIALS 1200 
+#define MAX_COUPLING_TRIALS 10000 
 #define COUPLING_SLEEP_TIME_IN_S 1
 
-#define _XC_FOLDER_PATH_ "Z:\\ESU\\Cases\\Coupling\\Neue_Kopplung\\XC\\" /* Adopt! */
-
-#define _SYNC_DAT_ _XC_FOLDER_PATH_ "SYNC.TXT"
-#define _FLUENT_TO_ANSYS_VOFOUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_TO_ANSYS_VOF_OUT.DAT"
-#define _FLUENT_ALLOUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_DEBUG_ALL_OUT.DAT"
-#define _ANSYS_TO_FLUENT_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_OUT.DAT"
-#define _ANSYS_ALLOUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_ALLOUT.DAT"
-#define _ANSYS_TO_FLUENT_MAPPING_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MAP.DAT"
-#define _FLUENT_TO_ANSYS_MAPPING_DAT_ _XC_FOLDER_PATH_ "FLUENT_TO_ANSYS_MAP.DAT"
-
-
 enum couplingStates {COUPLING_INIT=0, ANSYS_READY, FLUENT_READY, STOP_SIM, SYNC_ERROR};
-enum udmis {Jouleheat=0, LFx, LFy, LFz};
+enum coupledProperties {NONE=0, JOULE_HEAT, JOULE_HEAT_PLUS_LORENTZ, VOF};
+enum udmis {UDM_JH=0, UDM_LFx, UDM_LFy, UDM_LFz, UDM_VOF_old};
+
+#define LINUX 0
+
+#if LINUX
+#include "unistd.h"
+#endif
 
 #endif

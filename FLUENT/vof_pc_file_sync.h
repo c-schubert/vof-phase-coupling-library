@@ -20,7 +20,11 @@ int sync_coupling_state_from_file(char filename[], int *coupling_state);
 
 int sync_coupling_state_to_file(char filename[], int state);
 
+int sync_wait_for_state(char filename[], int desired_state, int *actual_state);
+
 int sync_wait_for_coupling(char filename[]);
+
+void sleeptest();
 
 
 #endif

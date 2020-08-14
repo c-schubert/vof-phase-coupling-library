@@ -37,8 +37,10 @@ void nearestNeighborMatching(
                                 int size_arr_1,
                                 real (*coord_arr_2)[ND_ND],
                                 int size_arr_2, 
-                                int **mapping_arr1_to_arr2, 
-                                int **mapping_arr2_to_arr1
+                                int **mappings_arr1_to_arr2, 
+                                real **weights_arr1_to_arr2, 
+                                int **mappings_arr2_to_arr1,
+                                real **weights_arr2_to_arr1
                             );
 
 int safeDistributeMappedArrayToNodesInCellZone(

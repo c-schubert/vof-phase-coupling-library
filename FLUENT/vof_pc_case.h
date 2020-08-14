@@ -1,0 +1,65 @@
+/* 
+vof_pc_case.h
+Case specific header file for the VoF phase coupling library for coupling between 
+ANSYS Fluent and ANSYS Mechanical APDL.
+
+Modify to fit the usage in vof_pc_nn_coupling.c!
+
+License (MIT):
+
+Copyright (c) 2016-2019 Christian Schubert
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+#ifndef VOF_PC_CASE_H
+
+#define VOF_PC_CASE_H 1
+#include "vof_pc_main.h"
+
+#define COUPLING_PHASE_FRAC_IDX 0
+
+#define _XC_FOLDER_PATH_ "/.../fluent_coupling_final/xc/"
+
+#define _SYNC_DAT_ _XC_FOLDER_PATH_ "SYNC.txt"
+
+#define _DUMMY_DAT_ _XC_FOLDER_PATH_ "DUMMY.DAT"
+
+/* MIXTURE */
+#define _ANSYS_TO_FLUENT_MIXTURE_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MIXTURE_COORDS_OUT.DAT"
+#define _ANSYS_TO_FLUENT_MIXTURE_JH_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MIXTURE_JH_OUT.DAT"
+#define _ANSYS_TO_FLUENT_MIXTURE_LF_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MIXTURE_LF_OUT.DAT"
+
+#define _FLUENT_DEBUG_MIXTURE_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_DEBUG_MIXTURE_COORDS_OUT.DAT"
+
+/* SLAG SKIN */
+#define _ANSYS_TO_FLUENT_SKIN_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_SKIN_COORDS_OUT.DAT"
+#define _ANSYS_TO_FLUENT_SKIN_JH_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_SKIN_JH_OUT.DAT"
+
+#define _FLUENT_DEBUG_SKIN_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_DEBUG_SKIN_COORDS_OUT.DAT"
+
+/* MOULD */
+#define _ANSYS_TO_FLUENT_MOULD_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MOULD_COORDS_OUT.DAT"
+#define _ANSYS_TO_FLUENT_MOULD_JH_OUT_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MOULD_JH_OUT.DAT"
+
+#define _FLUENT_DEBUG_MOULD_COORDS_OUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_DEBUG_MOULD_COORDS_OUT.DAT"
+
+
+/* FLUENT TO ANSYS -> MIXTURE ONLY */
+#define _FLUENT_TO_ANSYS_VOFOUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_TO_ANSYS_VOF_OUT.DAT"
+#define _FLUENT_ALLOUT_DAT_ _XC_FOLDER_PATH_ "FLUENT_DEBUG_ALL_OUT.DAT"
+
+
+/* MAPPINGS */
+#define _ANSYS_TO_FLUENT_MAPPING_MIXTURE_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MIXTURE_MAP.DAT"
+#define _ANSYS_TO_FLUENT_MAPPING_SKIN_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_SKIN_MAP.DAT"
+#define _ANSYS_TO_FLUENT_MAPPING_MOULD_DAT_ _XC_FOLDER_PATH_ "ANSYS_TO_FLUENT_MOULD_MAP.DAT"
+
+#define _FLUENT_TO_ANSYS_MAPPING_DAT_ _XC_FOLDER_PATH_ "FLUENT_TO_ANSYS_MAP.DAT"
+
+
+#endif

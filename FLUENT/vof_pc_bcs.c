@@ -17,7 +17,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   DEFINE_SOURCE(Jouleheating, c, t, dS, eqn)
   {
     #if (N_UDM >= 0)
-    return C_UDMI(c, t, Jouleheat);
+    return C_UDMI(c, t, UDM_JH);
     #else
     return 0
     #endif
@@ -27,7 +27,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 DEFINE_SOURCE(v_x_lorentz, c, t, dS, eqn)
 {
   #if (N_UDM >= 1)
-  return C_UDMI(c, t, LFx);
+  return C_UDMI(c, t, UDM_LFx);
   #else
   return 0;
   #endif
@@ -37,7 +37,7 @@ DEFINE_SOURCE(v_x_lorentz, c, t, dS, eqn)
 DEFINE_SOURCE(v_y_lorentz, c, t, dS, eqn)
 {
   #if (N_UDM >= 2)
-  return C_UDMI(c, t, LFy);
+  return C_UDMI(c, t, UDM_LFy);
   #else
   return 0;
   #endif
@@ -47,7 +47,7 @@ DEFINE_SOURCE(v_y_lorentz, c, t, dS, eqn)
 DEFINE_SOURCE(v_z_lorentz, c, t, dS, eqn)
 {
   #if (N_UDM >= 3)
-  return C_UDMI(c, t, LFz);
+  return C_UDMI(c, t, UDM_LFz);
   #else
   return 0;
   #endif

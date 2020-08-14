@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #ifndef MY_UDS_HELPERS_H
 #define MY_UDS_HELPERS_H
 #include "udf.h"
+#include "stdio.h"
 
 /* Defined error states */
 

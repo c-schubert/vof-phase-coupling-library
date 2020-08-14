@@ -26,7 +26,6 @@ DEFINE_ON_DEMAND(f_parallelInfo)
 #endif
 }
 
-
 int countLinesOfFile(char filename[], int *line_count)
 {
 /*
@@ -55,6 +54,8 @@ int countLinesOfFile(char filename[], int *line_count)
         }
         fclose(fp);
     }
+
+    Message("Found %i lines in file %s\n", (*line_count) ,filename);
 
     return state;
 }

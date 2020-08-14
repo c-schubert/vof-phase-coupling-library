@@ -14,6 +14,28 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include "vof_pc_file_sync.h"
 
+
+DEFINE_ON_DEMAND(debug_sleep)
+{
+    sleeptest();
+}
+
+
+void sleeptest()
+{
+    #if RP_HOST
+    int sleeptime = (int) ceil(COUPLING_SLEEP_TIME_IN_S*1000);
+
+    Message("Sleeping for %i ms\n", sleeptime);
+    #if LINUX
+    sleep((unsigned int) ceil(COUPLING_SLEEP_TIME_IN_S));
+    #else
+    Sleep((int) ceil(COUPLING_SLEEP_TIME_IN_S*1000));
+    #endif
+    #endif
+}
+
+
 int sync_coupling_state_from_file(char filename[], int *coupling_state)
 {
     /*
@@ -27,7 +49,7 @@ int sync_coupling_state_from_file(char filename[], int *coupling_state)
         if ((fp = fopen(filename, "r")) == NULL)
         {
             Message("Warning (sync_coupling_state_from_file()): Unable to "
-                    "open %s for writing\n", filename);
+                    "open %s for reading\n", filename);
             state = _STATE_ERROR;
         }
         else
@@ -110,49 +132,37 @@ int sync_coupling_state_to_file(char filename[], int coupling_state)
 }
 
 
-int sync_wait_for_coupling(char filename[])
+int sync_wait_for_state(char filename[], int desired_state, int *actual_state)
 {
-    int i;
-    int sync_trails;
+    int i,j;
     int state = _STATE_OK;
     bool state_synced = false;
-    int coupling_state = FLUENT_READY;
+    int coupling_state = -100;
 
-    while(!state_synced)
-    {
-        state = sync_coupling_state_to_file(filename, FLUENT_READY);
-
-        if(state == _STATE_ERROR)
-        {
-            Message("Warning (sync_wait_for_coupling()): Sync state could not "
-                    "be read, trying again!\n");
-            Sleep(COUPLING_SLEEP_TIME_IN_S*1000);
-        }
-        else
-        {
-            state_synced = true;
-            break;
-        }
-    }
-
-    i = 0;
-    while (coupling_state != ANSYS_READY && coupling_state != STOP_SIM) 
+    i= 0;
+    while (coupling_state != desired_state && coupling_state != STOP_SIM) 
     {
         state_synced = false;
+        j = 0;
         while(!state_synced)
         {
             state = sync_coupling_state_from_file(filename, &coupling_state);
             if(state == _STATE_ERROR)
             {   
                 Message("Warning (sync_wait_for_coupling()): Sync state could not "
-                        "be set, trying again!\n");
-                Sleep(COUPLING_SLEEP_TIME_IN_S*1000);
+                        "be read, trying again!\n");
+                #if LINUX
+                sleep((unsigned int) ceil(COUPLING_SLEEP_TIME_IN_S));
+                #else
+                Sleep((int) ceil(COUPLING_SLEEP_TIME_IN_S*1000));
+                #endif
             }
             else
             {
                 state_synced = true;
                 break;
             }
+            ++j;
         }
 
         if(i == MAX_COUPLING_TRIALS)
@@ -160,21 +170,62 @@ int sync_wait_for_coupling(char filename[])
             Message("Warning (sync_wait_for_coupling()): Number of max coupling "
                     "iterations reached, continue Fluent without ANSYS coupling "
                     "in this timestep!\n");
-            state = _STATE_ERROR;
+            state = _STATE_WARNING;
+            coupling_state = desired_state;
             break;
         }
         else 
         {
-            Sleep(COUPLING_SLEEP_TIME_IN_S*1000); /* Zeit in ms*/
+            #if LINUX
+            sleep((unsigned int) ceil(COUPLING_SLEEP_TIME_IN_S));
+            #else
+            Sleep((int) ceil(COUPLING_SLEEP_TIME_IN_S*1000));
+            #endif
 
-            if (i%15 == 0)
+            if (i%20 == 0)
             {
                 Message("Info (sync_wait_for_coupling()): Waiting for Ansys "
-                "since %i seconds ... \n", i);
+                "since %.2lf seconds ... \n", (real) (i*COUPLING_SLEEP_TIME_IN_S));
             }
             ++i;
         }
     }
+    (*actual_state) = coupling_state;
+    return state;
+}
+
+
+int sync_wait_for_coupling(char filename[])
+{
+    int i,j;
+    int state = _STATE_OK;
+    bool state_synced = false;
+    int coupling_state = FLUENT_READY;
+
+    j = 0;
+    while(!state_synced)
+    {
+        state = sync_coupling_state_to_file(filename, FLUENT_READY);
+
+        if(state == _STATE_ERROR)
+        {
+            Message("Warning (sync_wait_for_coupling()): Sync state could not "
+                    "be written, trying again!\n");
+            #if LINUX
+            sleep((unsigned int) ceil(COUPLING_SLEEP_TIME_IN_S));
+            #else
+            Sleep((int) ceil(COUPLING_SLEEP_TIME_IN_S*1000));
+            #endif
+        }
+        else
+        {
+            state_synced = true;
+            break;
+        }
+        ++j;
+    }
+
+    state = sync_wait_for_state(filename, ANSYS_READY, &coupling_state);
 
     if(coupling_state == STOP_SIM)
     {

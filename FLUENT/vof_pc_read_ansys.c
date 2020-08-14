@@ -13,24 +13,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 #include "vof_pc_read_ansys.h"
 
-int readJouleHeatAndLorentzForcesFromAnsysOut(
-                                                char filename[],
-                                                real (**lorentz_force)[ND_ND],
-                                                real **joule_heat,
-                                                int length_arr
-                                             )
+int readElemValueVecFromAnsysOut(
+                                    char filename[],
+                                    real (**e_vec_prop)[ND_ND],
+                                    int no_e
+                                )
 {
-FILE *fp;
 int state = _STATE_OK;
-int i = 0;
-*lorentz_force = NULL;
-*joule_heat = NULL;
-*lorentz_force = (real (*)[ND_ND]) calloc(ND_ND * length_arr, sizeof(real));
-*joule_heat = (real *) calloc(length_arr, sizeof(real));
 
-if(*lorentz_force == NULL || *joule_heat == NULL)
+#if RP_HOST
+FILE *fp;
+int i = 0;
+*e_vec_prop = NULL;
+*e_vec_prop = (real (*)[ND_ND]) calloc(ND_ND * no_e, sizeof(real));
+
+if(*e_vec_prop == NULL)
 {
-    Message("Error (readJouleHeatAndLorentzForcesFromAnsysOut()):  Memory "
+    Message("Error (readElemValueVecFromAnsysOut()):  Memory "
             "allocation error!Not enough Memory? \n");
     state = _STATE_ERROR;
 }
@@ -38,26 +37,27 @@ else
 {
     if ((fp = fopen(filename, "r")) == NULL)
     {
-        Message("Error (readJouleHeatAndLorentzForcesFromAnsysOut()): Unable to "
+        Message("Error (readElemValueVecFromAnsysOut()): Unable to "
                 "open %s, create Ansys output first!\n", filename);
         state = _STATE_ERROR;
     }
     else
     {
+        Message("Reading %i vector properties from file %s\n", no_e, filename);
+
         #if RP_3D
         if (IS_SINGLE_PRECISION) 
         {
-            while(fscanf(fp, "%f %f %f %f", &(*joule_heat)[i], 
-                                            &(*lorentz_force)[i][0], 
-                                            &(*lorentz_force)[i][1],
-                                            &(*lorentz_force)[i][2]
-                        ) == 4)
+            while(fscanf(fp, " %e %e %e",    &(*e_vec_prop)[i][0], 
+                                            &(*e_vec_prop)[i][1],
+                                            &(*e_vec_prop)[i][2]
+                        ) == 3)
             {
                 ++i;
 
-                if(i > length_arr)
+                if(i > no_e)
                 {
-                    Message("Warning (readJouleHeatAndLorentzForcesFromAnsysOut()): "
+                    Message("Warning (readElemValueVecFromAnsysOut()): "
                             "Reading %s, file has more lines than there is space "
                             "in coupling arrays", filename);
                     state = _STATE_ERROR;
@@ -67,17 +67,16 @@ else
         } 
         else 
         {
-            while(fscanf(fp, "%lf %lf %lf %lf", &(*joule_heat)[i], 
-                                            &(*lorentz_force)[i][0], 
-                                            &(*lorentz_force)[i][1],
-                                            &(*lorentz_force)[i][2]
-                        ) == 4)
+            while(fscanf(fp, " %lE %lE %lE",&(*e_vec_prop)[i][0], 
+                                            &(*e_vec_prop)[i][1],
+                                            &(*e_vec_prop)[i][2]
+                        ) == 3)
             {
                 ++i;
 
-                if(i > length_arr)
+                if(i > no_e)
                 {
-                    Message("Warning (readJouleHeatAndLorentzForcesFromAnsysOut()): "
+                    Message("Warning (readElemValueVecFromAnsysOut()): "
                             "Reading %s, file has more lines than there is space "
                             "in coupling arrays", filename);
                     break;
@@ -87,16 +86,15 @@ else
         #else
         if (IS_SINGLE_PRECISION) 
         {
-            while(fscanf(fp, "%f %f %f", &(*joule_heat)[i], 
-                                            &(*lorentz_force)[i][0], 
-                                            &(*lorentz_force)[i][1]
-                        ) == 3)
+            while(fscanf(fp, " %e %e",   &(*e_vec_prop)[i][0], 
+                                        &(*e_vec_prop)[i][1]
+                ) == 2)
             {
                 ++i;
 
-                if(i > length_arr)
+                if(i > no_e)
                 {
-                    Message("Warning (readJouleHeatAndLorentzForcesFromAnsysOut()): "
+                    Message("Warning (readElemValueVecFromAnsysOut()): "
                             "Reading %s, file has more lines than there is space "
                             "in coupling arrays", filename);
                     break;
@@ -105,16 +103,15 @@ else
         } 
         else 
         {
-            while(fscanf(fp, "%lf %lf %lf", &(*joule_heat)[i], 
-                                            &(*lorentz_force)[i][0], 
-                                            &(*lorentz_force)[i][1]
-                        ) == 3)
+            while(fscanf(fp, " %lE %lE", &(*e_vec_prop)[i][0], 
+                                        &(*e_vec_prop)[i][1]
+                        ) == 2)
             {
                 ++i;
 
-                if(i > length_arr)
+                if(i > no_e)
                 {
-                    Message("Warning (readJouleHeatAndLorentzForcesFromAnsysOut()): "
+                    Message("Warning (readElemValueVecFromAnsysOut()): "
                             "Reading %s, file has more lines than there is space "
                             "in coupling arrays", filename);
                     break;
@@ -122,31 +119,108 @@ else
             }
         }
         #endif
+        fclose(fp);
     }
 }
+#endif
 
 return state;
 }
 
-int readCoordinatesAnsysAllOut(
-                                    char filename[],
-                                    real (**coord_arr_ansys)[ND_ND],
-                                    int *size_coord_arr_ansys
-                                )
+
+int readElemValueAndVolumeFromAnsysOut(
+                                            char filename[],
+                                            real **e_prop,
+                                            real **e_vol,
+                                            int no_e
+                                        )
 {
-    FILE *fp;
+int state = _STATE_OK;
+#if RP_HOST
+FILE *fp;
+int i = 0;
+*e_prop = NULL;
+(*e_prop) = (real *) calloc(no_e, sizeof(real));
+*e_vol = NULL;
+(*e_vol) = (real *) calloc(no_e, sizeof(real));
+
+if( *e_prop == NULL || *e_vol == NULL)
+{
+    Message("Error (readElemValueAndVolumeFromAnsysOut()):  Memory "
+            "allocation error!Not enough Memory? \n");
+    state = _STATE_ERROR;
+}
+else
+{
+    if ((fp = fopen(filename, "r")) == NULL)
+    {
+        Message("Error (readElemValueAndVolumeFromAnsysOut()): Unable to "
+                "open %s, create Ansys output first!\n", filename);
+        state = _STATE_ERROR;
+    }
+    else
+    {
+        Message("Reading %i volume properties from file %s\n",no_e, filename);
+
+        if (IS_SINGLE_PRECISION) 
+        {
+            while(fscanf(fp, " %e %e", &(*e_prop)[i],&(*e_vol)[i]) == 2)
+            {
+                ++i;
+
+                if(i > no_e)
+                {
+                    Message("Warning (readElemValueAndVolumeFromAnsysOut()): "
+                            "Reading %s, file has more lines than there is space "
+                            "in coupling arrays", filename);
+                    state = _STATE_ERROR;
+                    break;
+                }
+            }
+        } 
+        else 
+        {
+            while(fscanf(fp, " %lE %lE", &(*e_prop)[i],&(*e_vol)[i]) == 2)
+            {
+                ++i;
+
+                if(i > no_e)
+                {
+                    Message("Warning (readElemValueAndVolumeFromAnsysOut()): "
+                            "Reading %s, file has more lines than there is space "
+                            "in coupling arrays", filename);
+                    break;
+                }
+            }
+        }
+        fclose(fp);
+    }
+}
+#endif
+return state;
+}
+
+
+
+int readCoordinatesFromAnsysOut(
+                                char filename[],
+                                real (**coord_arr_ansys)[ND_ND],
+                                int *size_coord_arr_ansys
+                            )
+{
+    /* Where is the error? */
+    FILE *fp = NULL;
     int state = _STATE_OK;
     real dummy;
     int i = 0;
     int ansys_elements = 0;
 
-
     state = countLinesOfFile(filename, &ansys_elements);
+    (*coord_arr_ansys) = NULL;
 
     if (state != _STATE_ERROR)
     {
-        *coord_arr_ansys = NULL;
-        *coord_arr_ansys = (real (*)[ND_ND]) calloc(ND_ND * ansys_elements, sizeof(real));
+        (*coord_arr_ansys) = (real (*)[ND_ND]) calloc(ND_ND * ansys_elements, sizeof(real));
     }
     else
     {
@@ -154,10 +228,10 @@ int readCoordinatesAnsysAllOut(
                 "getAnsysElementCountFromFileLength().\n");
     }
 
-    if(*coord_arr_ansys == NULL)
+    if((*coord_arr_ansys) == NULL)
     {
-        Message("Error (readCoordinatesAnsysAllOut()):  Memory "
-                "allocation error!Not enough Memory? \n");
+        Message("Error (readCoordinatesAnsysAllOut()): Memory "
+                "allocation error! Not enough Memory? \n");
         state = _STATE_ERROR;
     }
     else if (state != _STATE_ERROR)
@@ -176,9 +250,8 @@ int readCoordinatesAnsysAllOut(
             #if RP_3D
             if (IS_SINGLE_PRECISION)
             {
-                while(fscanf(fp, "%f %f %f %f %f %f %f %f", 
-                &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], &(*coord_arr_ansys)[i][2],
-                &dummy, &dummy, &dummy, &dummy, &dummy) == 8)
+                while(fscanf(fp, " %e %e %e", 
+                &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], &(*coord_arr_ansys)[i][2]) == 3)
                 {
                     ++i;
 
@@ -197,9 +270,8 @@ int readCoordinatesAnsysAllOut(
             } 
             else 
             {
-                while(fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf",
-                &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], &(*coord_arr_ansys)[i][2],
-                &dummy, &dummy, &dummy, &dummy, &dummy) == 8)
+                while(fscanf(fp, " %lE %lE %lE",
+                &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], &(*coord_arr_ansys)[i][2]) == 3)
                 {
                     ++i;
 
@@ -218,9 +290,8 @@ int readCoordinatesAnsysAllOut(
             #else 
             if (IS_SINGLE_PRECISION) 
             {
-                while(fscanf(fp, "%f %f %f %f %f %f %f", 
-                    &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], 
-                    &dummy, &dummy, &dummy, &dummy, &dummy) == 7)
+                while(fscanf(fp, " %e %e", 
+                    &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1]) == 2)
                 {
                     ++i;
 
@@ -238,9 +309,8 @@ int readCoordinatesAnsysAllOut(
             } 
             else 
             {
-                while(fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf", 
-                    &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1], 
-                    &dummy, &dummy, &dummy, &dummy, &dummy) == 7)
+                while(fscanf(fp, " %lE %lE", 
+                    &(*coord_arr_ansys)[i][0], &(*coord_arr_ansys)[i][1]) == 2)
                 {
                     ++i;
 
@@ -256,11 +326,12 @@ int readCoordinatesAnsysAllOut(
                     }
                 }
             }
-        #endif
-        *size_coord_arr_ansys = ansys_elements;
-        fclose(fp);
+            #endif
+           fclose(fp);
         }
     }
+    (*size_coord_arr_ansys) = ansys_elements;
+    
 
     return state;
 }

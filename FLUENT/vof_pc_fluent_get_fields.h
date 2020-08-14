@@ -14,6 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #ifndef VOF_PC_FLUENT_GET_FIELDS_H
 #include "vof_pc_main.h"
+#include "vof_pc_case.h"
 
 int hostGetCellCountPerNodeInCellZone( 
                                       int **cells_per_node,
@@ -21,14 +22,31 @@ int hostGetCellCountPerNodeInCellZone(
                                       int cellZoneID
                                       );
 
-void hostGetCouplingFieldsFromNodesinCellZone(
-                                                real (**coord_arr_full)[ND_ND],
-                                                real **vof_arr_full, 
-                                                int **cell_id_arr_full, 
-                                                int **compute_node_id_arr_full,
-                                                int *arr_full_size,
+real get_c_vof(cell_t c, Thread *t);
+real get_coord(cell_t c,Thread *t,int dim);
+real get_x_coord(cell_t c,Thread *t);
+real get_y_coord(cell_t c,Thread *t);
+real get_z_coord(cell_t c,Thread *t);
+
+void hostGetCellCoordsFromNodesInCellZone(
+                                          real (**coord_arr_full)[ND_ND],
+                                          int length_arrs_full,
+                                          int cell_zone
+                                          );
+
+void hostGetOrderingArraysFromNodesInCellZone(
+                                                int **cid_arr_full, 
+                                                int **myid_arr_full,
+                                                int *length_arrs_full,
                                                 int cell_zone
-                                             );
+                                              );
+                                              
+void hostGetOrderedFieldValueArrayFromNodesInCellZone(
+                                                      real **val_arr_full,
+                                                      real (*C_VAL_WRAPPER_FUN)(cell_t, Thread*),
+                                                      int *length_arrs_full, 
+                                                      int cell_zone
+                                                    );
 
 #define VOF_PC_FLUENT_GET_FIELDS_H
 
